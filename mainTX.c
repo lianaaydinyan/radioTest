@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <windows.h>
 
-#define DEF_BAUD 19200
+#define DEF_BAUD 115200
 #define PRINT_BLOCK
 
 
