@@ -9,7 +9,6 @@
 #define RX_TIMEOUT 5
 
 HANDLE hCom;
-
 uint8_t portOpen();
 int timeval_subtract(struct timespec *result, struct timespec *x, struct timespec *y);
 
@@ -24,19 +23,29 @@ int main()
     while (portReturn > 1);
     if (portReturn == 1) return 0;
 
-    printf("outFile = %s\n\n", "out.bin");
+    printf("Opening out.bin for writing...\n");
     outFile = fopen("out.bin", "wb");
     if (!outFile)
     {
-        printf("\n\noutFile bomb!\n\n");
+        printf("Error: Could not open out.bin for writing!\n");
         return 1;
     }
 
-    do
+    // Write a test byte to verify file operations
+    uint8_t testByte = 0xAA;
+    if (fwrite(&testByte, 1, 1, outFile) != 1)
     {
-        ReadFile(hCom, &rx, 1, &rwlen, 0);
-    } while (rwlen != 0);
-    printf("flushed\n\n");
+        printf("Error: fwrite test failed!\n");
+        fclose(outFile);
+        return 1;
+    }
+    fflush(outFile);
+    printf("Test write successful, proceeding with UART data capture.\n");
+
+    // Flush input buffer
+    do ReadFile(hCom, &rx, 1, &rwlen, 0);
+    while (rwlen != 0);
+    printf("UART buffer flushed.\n");
 
     while (Tdiff.tv_sec < RX_TIMEOUT)
     {
@@ -45,27 +54,34 @@ int main()
         {
             clock_gettime(CLOCK_MONOTONIC, &T1);
             timeval_subtract(&Tdiff, &T1, &T0);
+            
             if (ReadFile(hCom, &rx, 1, &rwlen, 0))
             {
                 if (rwlen > 0)
                 {
                     printf("Read %lu bytes: 0x%02X\n", rwlen, rx);
-                    size_t written = fwrite(&rx, 1, 1, outFile);
-                    if (written > 0)
-                        printf("Wrote %zu bytes to file\n", written);
-                    else
-                        printf("Error writing to file\n");
+                    if (fwrite(&rx, 1, 1, outFile) != 1)
+                    {
+                        printf("Error: fwrite failed!\n");
+                        break;
+                    }
+                    fflush(outFile);
+                }
+                else
+                {
+                    printf("No data read\n");
                 }
             }
             else
             {
                 printf("ReadFile failed with error %lu\n", GetLastError());
+                break;
             }
         } while (rwlen == 0 && Tdiff.tv_sec < RX_TIMEOUT);
     }
-    fflush(outFile);
+    
     fclose(outFile);
-    printf("File writing complete.\n");
+    printf("File closed. Check out.bin\n");
     return 0;
 }
 
@@ -84,7 +100,7 @@ uint8_t portOpen()
     hCom = CreateFile(inBuffer, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
     if (hCom == INVALID_HANDLE_VALUE)
     {
-        printf("\terror: COM%d is not available.\n", port);
+        printf("Error: COM%d is not available.\n", port);
         return 2;
     }
 
@@ -98,8 +114,7 @@ uint8_t portOpen()
 
     printf("\nBaud rate? ");
     scanf("%s", inBuffer);
-    if (inBuffer[0] == 'x') baud = DEF_BAUD;
-    else baud = strtol(inBuffer, &tail, 0);
+    baud = (inBuffer[0] == 'x') ? DEF_BAUD : strtol(inBuffer, &tail, 0);
 
     dcbSerialParams.BaudRate = baud;
     dcbSerialParams.ByteSize = 8;
@@ -115,15 +130,12 @@ uint8_t portOpen()
     timeouts.ReadIntervalTimeout = 50;
     timeouts.ReadTotalTimeoutConstant = 50;
     timeouts.ReadTotalTimeoutMultiplier = 10;
-    timeouts.WriteTotalTimeoutConstant = 50;
-    timeouts.WriteTotalTimeoutMultiplier = 10;
     if (!SetCommTimeouts(hCom, &timeouts))
     {
-        printf("Error setting Serial Port timeouts property\n");
+        printf("Error setting Serial Port timeouts\n");
         return 5;
     }
     printf("COM%d opened successfully @ %i baud\n", port, baud);
-
     return 0;
 }
 
