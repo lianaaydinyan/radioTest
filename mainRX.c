@@ -46,39 +46,45 @@ int main()
     do ReadFile(hCom, &rx, 1, &rwlen, 0);
     while (rwlen != 0);
     printf("UART buffer flushed.\n");
+    uint32_t totalBytes = 0;
 
     while (Tdiff.tv_sec < RX_TIMEOUT)
     {
         clock_gettime(CLOCK_MONOTONIC, &T0);
+    
         do
         {
             clock_gettime(CLOCK_MONOTONIC, &T1);
             timeval_subtract(&Tdiff, &T1, &T0);
-            
-            if (ReadFile(hCom, &rx, 1, &rwlen, 0))
-            {
-                if (rwlen > 0)
-                {
-                    printf("Read %lu bytes: 0x%02X\n", rwlen, rx);
-                    if (fwrite(&rx, 1, 1, outFile) != 1)
-                    {
-                        printf("Error: fwrite failed!\n");
-                        break;
-                    }
-                    fflush(outFile);
-                }
-                else
-                {
-                    printf("No data read\n");
-                }
-            }
-            else
+    
+            if (!ReadFile(hCom, &rx, 1, &rwlen, 0))
             {
                 printf("ReadFile failed with error %lu\n", GetLastError());
                 break;
             }
+    
+            if (rwlen > 0)
+            {
+                totalBytes += rwlen;
+                printf("Read %lu byte(s): 0x%02X (Total: %u bytes)\n", rwlen, rx, totalBytes);
+    
+                if (fwrite(&rx, 1, 1, outFile) != 1)
+                {
+                    printf("Error: fwrite failed!\n");
+                    break;
+                }
+                fflush(outFile);
+            }
+            else
+            {
+                printf("No data read\n");
+            }
+    
         } while (rwlen == 0 && Tdiff.tv_sec < RX_TIMEOUT);
     }
+    
+    printf("Total bytes received: %u\n", totalBytes);
+    
     
     fclose(outFile);
     printf("File closed. Check out.bin\n");
