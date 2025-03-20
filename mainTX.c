@@ -34,12 +34,12 @@ int main()
       do numOfBytes=strtol(inBuffer, &tail, 0);
       while(numOfBytes==0||numOfBytes>0x10000);
       uint8_t *byteBlock=malloc(numOfBytes);
-      for(uint16_t byteCnt=0; byteCnt<=numOfBytes; byteCnt++) byteBlock[byteCnt]=(uint8_t)byteCnt;
+      for(uint16_t byteCnt=0; byteCnt<numOfBytes; byteCnt++) byteBlock[byteCnt]=(uint8_t)byteCnt;
       DWORD rwlen;
       WriteFile(hCom, byteBlock, numOfBytes, &rwlen, 0);
 
 #ifdef PRINT_BLOCK
-      for(uint16_t byteCnt1=0; byteCnt1<=numOfBytes; byteCnt1+=0x10)
+      for(uint16_t byteCnt1=0; byteCnt1<numOfBytes; byteCnt1+=0x10)
       {
         printf("0x%04x | ", byteCnt1);
         for(uint8_t byteCnt2=0; byteCnt2<0x10; byteCnt2++) printf("0x%02x ", byteBlock[byteCnt1+byteCnt2]);
