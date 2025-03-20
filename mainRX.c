@@ -6,7 +6,7 @@
 #include <windows.h>
 
 #define DEF_BAUD 115200
-#define RX_TIMEOUT 5
+#define RX_TIMEOUT 10
 
 HANDLE hCom;
 uint8_t portOpen();
@@ -127,9 +127,9 @@ uint8_t portOpen()
     }
 
     COMMTIMEOUTS timeouts = {0};
-    timeouts.ReadIntervalTimeout = 50;
-    timeouts.ReadTotalTimeoutConstant = 50;
-    timeouts.ReadTotalTimeoutMultiplier = 10;
+    timeouts.ReadIntervalTimeout = 500;
+    timeouts.ReadTotalTimeoutConstant = 500;
+    timeouts.ReadTotalTimeoutMultiplier = 100;
     if (!SetCommTimeouts(hCom, &timeouts))
     {
         printf("Error setting Serial Port timeouts\n");
